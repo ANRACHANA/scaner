@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>PRO DUAL LABEL PRINT</title>
+
+<script src="https://unpkg.com/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+<style>
+
+/* =========================
+   A4 PAGE
+========================= */
+@page{
+  size:A4;
+  margin:8mm;
+}
+
+body{
+  margin:0;
+  padding:8mm;
+  font-family:'Khmer OS Bokor';
+}
+
+/* GRID 2 COLUMN */
+.page{
+  display:grid;
+  grid-template-columns:repeat(2, 1fr);
+  gap:6mm;
+}
+
+/* =========================
+   BIG LABEL (2cm x 8cm)
+========================= */
+.big{
+  position:relative;
+  width:8cm;
+  height:2cm;
+  overflow:hidden;
+  box-sizing:border-box;
+}
+
+/* FRAME IMAGE (NO STRETCH) */
+.big .frame{
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  font-size:3.2mm;
+  object-fit:cover;   /* 🔥 BEST PRINT MODE */
+  z-index:0;
+}
+
+/* CONTENT */
+
+.big .name{
+  flex:1;
+
+  text-align:center;
+
+  font-size:20px;
+  font-weight:bold;
+  color:#1aa4bd;
+
+  white-space:nowrap;
+  overflow:hidden;
+
+}
+.big .content{
+  position:absolute;
+  top:0;
+  left:0;
+  right:0;
+  bottom:0;
+
+  display:flex;
+  justify-content:center;   /* 👉 horizontal center */
+  align-items:center;       /* 👉 vertical center */
+
+  text-align:center;
+}
+/* =========================
+   SMALL LABEL (1.2cm x 4cm)
+========================= */
+.small{
+  position:relative;
+  width:5cm;
+  height:1.2cm;
+  overflow:hidden;
+  box-sizing:border-box;
+}
+.small .name{
+  flex:1;
+
+  text-align:center;
+
+  font-size:12px;
+  font-weight:bold;
+  color:#1aa4bd;
+
+  white-space:nowrap;
+  overflow:hidden;
+}
+
+.small .frame{
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+ font-size:2.2mm;
+  object-fit:cover;
+  z-index:0;
+}
+
+.small .content{
+  position:absolute;
+  top:1mm;
+  left:1.5mm;
+  right:1.5mm;
+  bottom:1mm;
+
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+
+  z-index:1;
+}
+
+/* =========================
+   NAME STYLE
+========================= */
+.name{
+  font-weight:bold;
+  color:#1aa4bd;
+  max-width:80%;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+
+
+    flex:1;
+
+  text-align:center;
+
+  font-size:12px;
+
+
+
+
+ 
+
+  padding:0 1mm;
+
+  box-sizing:border-box;
+  
+}
+.name{
+  flex:1;
+
+  text-align:center;
+
+  font-size:12px;
+  font-weight:bold;
+  color:#1aa4bd;
+
+  white-space:nowrap;
+  overflow:hidden;
+
+  padding:0 1mm;
+
+  
+}
+/* QR SIZE */
+.qr{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* BIG QR */
+.big .qr{
+  width:14mm;
+  height:14mm;
+}
+
+/* SMALL QR */
+.small .qr{
+  width:10mm;
+  height:10mm;
+}
+
+/* PRINT CLEAN */
+@media print{
+
+  /* 🔥 EACH LABEL STAY TOGETHER */
+.label{
+  position:relative;
+
+  overflow:hidden;
+
+  box-sizing:border-box;
+
+  break-inside:avoid;
+  page-break-inside:avoid;
+}
+
+  /* 🔥 GRID SAFE */
+  .page{
+    display:grid;
+
+    grid-template-columns:repeat(2,1fr);
+
+    gap:5mm;
+  }
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="page" id="page"></div>
+
+<script>
+
+/* =========================
+   DATA
+========================= */
+let items = JSON.parse(localStorage.getItem("printItems") || "[]");
+
+let page = document.getElementById("page");
+
+/* =========================
+   RENDER LABELS
+========================= */
+items.forEach(i=>{
+
+  page.innerHTML += `
+
+    <!-- BIG LABEL -->
+    <div class="big">
+
+      <img src="sticker.png" class="frame">
+
+      <div class="content">
+
+        <div class="name">${i.name}</div>
+
+        <div class="qr">
+          <div id="qr-big-${i.docId}"></div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- SMALL LABEL -->
+    <div class="small">
+
+      <img src="small-sticker.png" class="frame">
+
+      <div class="content">
+
+        <div class="name">${i.name}</div>
+
+        <div class="qr">
+          <div id="qr-small-${i.docId}"></div>
+        </div>
+
+      </div>
+
+    </div>
+
+  `;
+
+});
+
+/* =========================
+   QR GENERATION (STABLE)
+========================= */
+function generateQR(){
+
+  items.forEach(i=>{
+
+    // BIG QR
+    new QRCode(document.getElementById("qr-big-"+i.docId),{
+      text:i.id,
+      width:60,
+      height:60
+    });
+
+    // SMALL QR
+    new QRCode(document.getElementById("qr-small-"+i.docId),{
+      text:i.id,
+      width:40,
+      height:40
+    });
+
+  });
+
+  setTimeout(()=>{
+    window.print();
+  },800);
+}
+function fitTextToBox(){
+
+  document.querySelectorAll(".name").forEach(el=>{
+
+    let max = 10; // default size
+    let min = 5;  // minimum size
+
+    el.style.fontSize = max + "px";
+
+    // 🔥 if text longer than box
+    while(
+      el.scrollWidth > el.clientWidth &&
+      max > min
+    ){
+
+      max--;
+
+      el.style.fontSize = max + "px";
+    }
+
+  });
+
+}
+
+/* RUN AFTER PAGE LOAD */
+window.onload = ()=>{
+
+  setTimeout(()=>{
+
+    fitTextToBox();
+
+  },300);
+
+};
+window.onload = ()=>{
+  setTimeout(generateQR,300);
+};
+
+</script>
+
+</body>
+</html>

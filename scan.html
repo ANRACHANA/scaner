@@ -1,0 +1,2060 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+<meta charset="UTF-8">
+<title>ស្គែនឈ្មោះ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+body{
+  margin:0;
+  font-family:"Khmer OS Bokor",Arial;
+  background:#eef3f8;
+}
+
+.appbar{
+  background:linear-gradient(135deg,#1aa4bd,#eeeeee);
+  color:#fff;
+  padding:16px;
+  text-align:center;
+  font-weight:bold;
+}
+
+.card{
+  background:#ffffff;
+  margin:10px;
+  padding:10px;
+  border-radius:14px;
+  box-shadow:0 6px 15px rgba(135, 193, 230, 0.709);
+}
+
+.row{display:flex;gap:10px;}
+
+.btn{
+  padding:12px;
+  border:none;
+  border-radius:4px;
+  color:#0973a4;
+   box-shadow:0 3px 10px rgba(121, 123, 123, 0.786);
+  width:100%;
+  font-weight:bold;
+}
+.home-btn{
+  padding:10px 14px;
+  color:rgb(4, 117, 135);
+  border:none;
+  border-radius:4px;
+  cursor:pointer;
+  font-family:Khmer OS Bokor;
+  font-size:14px;
+  box-shadow:0 3px 10px rgba(4, 74, 171, 0.596);
+  transition:0.3s;
+}
+
+.home-btn:hover{
+   background:linear-gradient(135deg,#1aa4bd,#0d6efd);
+  transform:scale(1.05);
+}
+.scan{background:#ebc4c49d;}
+.upload{background:#aeb1b196;}
+.btn.scan{
+  padding:10px 20px;
+  border:none;
+  border-radius:4px;
+  cursor:pointer;
+  font-family:Khmer OS Battambang;
+  transition:0.3s;
+}
+
+
+#reader{
+  position:relative;
+}
+
+/* 🔥 Scan line */
+.scan-line{
+  position:absolute;
+  left:0;
+  top:0;
+  width:100%;
+  height:3px;
+  background:linear-gradient(90deg,transparent,#00e5ff,transparent);
+  box-shadow:0 0 10px #00e5ff;
+  display:none;
+  animation:scanMove 1.2s linear infinite;
+}
+
+@keyframes scanMove{
+  0%{top:0;}
+  100%{top:100%;}
+}
+table{
+  width:150%;
+  border-collapse:collapse;
+}
+.table-scroll{
+  max-height: 660px;   /* 👉 កម្ពស់ list */
+  overflow-y: auto;
+  overflow-x: auto;
+  margin-top:10px;
+  border-radius:10px;
+}
+
+/* ✅ ដាក់នៅ table */
+.table-scroll table{
+  min-width: 600px; /* 👉 បង្ខំ scroll */
+}
+/* Hover row */
+tbody tr:hover{
+  background:#f1f7ff;
+}
+th{
+  background:#359ddd;
+  color:#fff;
+  padding:10px;
+}
+
+td{
+  padding:8px;
+  border-bottom:1px solid #a1c9dd76;
+}
+
+.ok{
+  color:#0d6efd;
+  font-weight:bold;
+}
+
+.modal{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgb(0, 0, 0);
+  justify-content:center;
+  align-items:center;
+  z-index:9999;
+  padding:15px;
+  animation:fadeIn .2s ease;
+}
+
+.edit-box{
+  width:100%;
+  max-width:1000px;
+  background:#fff;
+  border-radius:20px;
+  overflow:hidden;
+  box-shadow:0 15px 45px rgba(9, 37, 39, 0.788);
+  animation:popup .25s ease;
+}
+
+.edit-header{
+  background:linear-gradient(135deg,#1aa4bd,#0d6efd);
+  color:#fff;
+  padding:18px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.edit-header h2{
+  margin:0;
+  font-size:20px;
+}
+
+.edit-header small{
+  opacity:.9;
+}
+
+.close-x{
+  border:none;
+  background:none;
+  color:white;
+  font-size:22px;
+  cursor:pointer;
+}
+
+.edit-body{
+  padding:18px;
+}
+#toast{
+  position:fixed;
+  top:20px;
+  right:20px;
+  min-width:220px;
+  padding:14px 18px;
+  border-radius:12px;
+  color:white;
+  font-weight:bold;
+  z-index:999999;
+
+  opacity:0;
+  transform:translateY(-20px);
+
+  transition:.3s;
+  pointer-events:none;
+
+  box-shadow:0 8px 20px rgba(0,0,0,.25);
+}
+
+#toast.show{
+  opacity:1;
+  transform:translateY(0);
+}
+
+#toast.success{
+  background:#28a746f6;
+}
+
+#toast.error{
+  background:#dc354689;
+}
+.input-group{
+  margin-bottom:14px;
+  font-size: 16px;
+}
+.input-group label{
+  display:block;
+  margin-bottom:6px;
+  font-weight:bold;
+  color:#333;
+}
+.input-group label{
+  display:block;
+  margin-bottom:6px;
+  font-weight:bold;
+  color:#333;
+}
+
+.input-group input,
+.input-group textarea{
+  width:100%;
+  padding:12px;
+  border:1px solid #ddd;
+  border-radius:12px;
+  font-size:15px;
+  font-family:"Khmer OS Battambang";
+  outline:none;
+  transition:.2s;
+  box-sizing:border-box;
+}
+
+.input-group input:focus,
+.input-group textarea:focus{
+  border-color:#0d6efd;
+  box-shadow:0 0 8px rgba(13,110,253,.2);
+}
+
+.row{
+  display:flex;
+  gap:10px;
+}
+
+.row .input-group{
+  flex:1;
+}
+
+.edit-footer{
+  display:flex;
+  gap:10px;
+  padding:15px;
+  background:#f8f9fa;
+}
+
+.cancel-btn,
+.save-btn{
+  flex:1;
+  border:none;
+  padding:12px;
+  border-radius:12px;
+  font-weight:bold;
+  cursor:pointer;
+  transition:.2s;
+}
+
+.cancel-btn{
+  background:#dc3545;
+  color:white;
+}
+
+.save-btn{
+  background:#0d6efd;
+  color:white;
+}
+
+.cancel-btn:hover,
+.save-btn:hover{
+  transform:translateY(-2px);
+}
+
+@keyframes popup{
+  from{
+    transform:scale(.8);
+    opacity:0;
+  }
+  to{
+    transform:scale(1);
+    opacity:1;
+  }
+}
+
+@keyframes fadeIn{
+  from{opacity:0;}
+  to{opacity:1;}
+}
+.box{
+  background:#fff;
+  width:90%;
+  max-width:100%;
+  padding:15px;
+  border-radius:12px;
+}
+
+input{
+  width:95%;
+  padding:10px;
+  margin-top:5px;
+  border:1px solid #ddd;
+  border-radius:8px;
+
+  font-size:16px; /* 🔥 IMPORTANT: stop mobile zoom */
+  outline:none;
+}
+
+/* focus style */
+input:focus{
+  border-color:#0d6efd;
+  box-shadow:0 0 6px rgba(13,110,253,0.3);
+}
+
+.save{
+  background:#1aa4bd;
+  color:#fff;
+  border:none;
+  width:100%;
+  padding:10px;
+  margin-top:10px;
+  border-radius:8px;
+}
+
+.close{
+  background:#8c8787bb;
+  color:#2f2c2c;
+  border:none;
+  width:30%;
+  padding:10px;
+  margin-top:5px;
+  border-radius:8px;
+}
+.delete-btn{
+  border:none;
+  background:#e1d7d723;
+  color:rgb(221, 217, 217);
+  padding:8px 10px;
+  border-radius:8px;
+  cursor:pointer;
+  transition:.2s;
+}
+
+.delete-btn:hover{
+  transform:scale(1.05);
+  background:#cb091c;
+}
+
+.delete-btn:active{
+  transform:scale(.95);
+}
+#deleteModal .box{
+  text-align:center;
+}
+
+#deleteModal p{
+  color:#555;
+  margin-top:10px;
+}
+#loadingOverlay{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.6);
+  color:#fff;
+  font-size:18px;
+  font-weight:bold;
+  justify-content:center;
+  align-items:center;
+  z-index:9999;
+}
+.highlight{
+  background: yellow;
+  color: black;
+  padding:2px 4px;
+  border-radius:4px;
+  font-weight:bold;
+}
+#totalGuest{color:#0d6efd;font-size:18px;}
+#totalUSD{color:#28a745;font-size:18px;font-weight:bold;}
+#totalKHR{color:#ff9800;font-size:18px;font-weight:bold;}
+
+
+
+
+
+
+
+
+
+
+
+
+
+.all-btn{
+  padding:10px 16px;
+  background:#0754a1;
+  color:#fff;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:bold;
+}
+
+.modal{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(45, 44, 44, 0.793);
+  justify-content:center;
+  align-items:center;
+  z-index:9999;
+}
+
+.modal-box{
+  width:100%;
+  max-width:70%;
+  background:#e9eded;
+  border-radius:12px;
+  padding:20px;
+  max-height:80vh;
+  overflow:auto;
+}
+
+.modal-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:10px;
+}
+
+.modal-list{
+  max-height:400px;
+  overflow-y:auto;
+  border:1px solid #ddd;
+  border-radius:10px;
+}
+
+.modal-item{
+  padding:10px;
+  border-bottom:1px solid #eee;
+  cursor:pointer;
+}
+
+.modal-item:hover{
+  background:#e9f5ff;
+}
+
+.close-btn{
+  background:red;
+  color:#fff;
+  border:none;
+  padding:5px 10px;
+  border-radius:6px;
+  cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+
+<input
+  id="usbScan"
+  autofocus
+  style="
+    position:absolute;
+    opacity:0;
+    pointer-events:none;
+  "
+>
+<div class="card">
+  <div class="row">
+    <button class="home-btn" onclick="goBack()">🔙</button>
+
+<button class="btn scan" onclick="startScan()">
+  <img src="image.png" alt="scan" style="width:40px;height:40px;">
+  
+
+</button>
+
+    <label class="btn upload">
+      ជ្រើសរើស QR
+      <input type="file" hidden accept="image/*" onchange="scanImage(this)">
+      
+    </label>
+    <button onclick="openModal()" class="all-btn" style="font-family: khmer os;">
+     ជ្រើសរើសឈ្មោះ​
+     
+</button>
+  </div>
+  
+</div>
+
+ 
+<p id="result" style="text-align: center;color: #ffffff;background-color: #ffffff;"></p>
+</div>
+<div id="reader">
+  <div class="scan-line"></div>
+ 
+</div>
+<!-- TOTAL -->
+<div class="card">
+  <p>👥 ភ្ញៀវចងដៃ: <b id="totalGuest">0</b> នាក់</p>
+  <p>💵 ដុល្លារ: <b id="totalUSD">0</b> $</p>
+  <p>💴 រៀល: <b id="totalKHR">0</b> ៛</p>
+</div>
+
+<!-- TABLE -->
+<div class="card">
+  <div>
+  <input style="width:30%;background-color:#f3f8f9b2;color:black;font-size: 12px;font-family: khmer os;"
+    type="text" id="searchBox" placeholder="🔍 ស្វែងរកឈ្មោះ..." onkeyup="searchTable()">
+  <button onclick="exportExcel()" style="
+  padding:10px 14px;
+  background:#28a745;
+  color:white;
+  border:none;
+  border-radius:8px;
+  margin:10px;
+  font-weight:bold;
+">
+📥 Export Excel
+</button>
+
+
+    <div class="table-scroll">
+      
+      <table style="width:100%; min-width:700px; table-layout:fixed;">
+        <thead>
+          <tr>
+            <th style="width:20%;">ID</th>
+            <th style="width:20%;">ឈ្មោះ</th>
+            <th style="width:10%;">ដុល្លារ</th>
+            <th style="width:15%;">រៀល</th>
+             <th style="width:15%;">បរិច្ឆេទ</th>
+            <th style="width:35%;">ចាំណាំ</th>
+            <th style="width:10%;">លុបទិន្នន័យ</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<!-- EDIT MODAL -->
+<div class="modal" id="modal">
+
+  <div class="edit-box">
+
+    <!-- HEADER -->
+    <div class="edit-header">
+
+      <div>
+        <h2 id="modalTitle">រក្សាព័ត៌មានភ្ញៀវ</h2>
+        <small>រក្សាទុក និង កែប្រែ ព័ត៌មានភ្ញៀវ</small>
+      </div>
+
+      <button class="close-x" onclick="closeModal()">
+        <i class="fa fa-times"></i>
+      </button>
+
+    </div>
+
+    <!-- BODY -->
+    <div class="edit-body">
+      <div style="display:flex; gap:10px; margin-bottom:10px;">
+
+<button type="button"
+onclick="openAllModal()"
+style="
+  flex:1;
+  padding:10px;
+  border:none;
+  border-radius:10px;
+  background:#0d6efd;
+  color:white;
+  font-family:'Khmer OS Battambang';
+  font-weight:bold;
+">
+📋 ជ្រើស ឈ្មោះភ្ញៀវ
+</button>
+  <button type="button"
+    onclick="openAddNewModal()"
+    style="
+      flex:1;
+      padding:10px;
+      border:none;
+      border-radius:10px;
+      background:#28a745;
+      color:white;
+      font-family:'Khmer OS Battambang';
+      font-weight:bold;
+    ">
+    ➕ បន្ថែមភ្ញៀវថ្មី
+  </button>
+
+</div>
+
+
+
+
+
+
+      <div class="input-group" >
+        <label >👤 ឈ្មោះភ្ញៀវ</label>
+        <input id="guestId" readonly style="background-color: #d4d9dd6c; color: rgb(115, 113, 113);font-size: 19px;">
+        
+        <input id="name" readonly style="background-color: #6c757d6c; color: rgb(6, 103, 229);font-size: 19px;">
+      </div>
+
+      <small>សូមបញ្ជូលទឹកប្រាក់</small>
+      <div class="row">
+        
+        <div class="input-group">
+          <label>💵 ដុល្លារ</label>
+          <input id="usd" type="number" placeholder="0" style="color: #28a745;font-size: 19px;">
+        </div>
+
+        <div class="input-group">
+          <label>💴 រៀល</label>
+          <input id="khr" type="number" placeholder="0" style="color: #ff9800;font-size: 19px;">
+        </div>
+
+      </div>
+
+      <div class="input-group">
+        <label>📝 ចំណាំ</label>
+        <textarea id="note" rows="3"
+        placeholder="បញ្ចូលចំណាំ..."></textarea>
+      </div>
+
+    </div>
+
+    <!-- FOOTER -->
+    <div class="edit-footer">
+
+
+      <button class="save-btn"
+      onclick="saveData()"
+       style="
+      flex:1;
+      padding:12px;
+      border-radius:10px;
+      border:none;
+      background:#0596c7;
+      color:white;
+      font-weight:bold;
+      cursor:pointer;
+      font-family:'Khmer OS Battambang';
+    ">
+ 
+        💾 រក្សាទុក
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- ADD NEW MODAL -->
+<div class="modal" id="addNewModal">
+
+  <div class="edit-box">
+
+    <div class="edit-header">
+
+      <div>
+        <h2>➕ បន្ថែមភ្ញៀវ</h2>
+      </div>
+
+      <button class="close-x"
+      onclick="closeAddNewModal()">
+        <i class="fa fa-times"></i>
+      </button>
+
+    </div>
+
+    <div class="edit-body">
+
+      <div class="input-group"​ >
+        <label>👤 ឈ្មោះ</label>
+
+        <input
+          id="newName"
+          placeholder="បញ្ចូលឈ្មោះ"
+        >
+      </div>
+
+      <div class="row">
+
+        <div class="input-group">
+          <label>💵 ដុល្លារ</label>
+
+          <input
+            id="newUsd"
+            type="number"
+            placeholder="0"
+          >
+        </div>
+
+        <div class="input-group">
+          <label>💴 រៀល</label>
+
+          <input
+            id="newKhr"
+            type="number"
+            placeholder="0"
+          >
+        </div>
+
+      </div>
+
+      <div class="input-group">
+        <label >📝 ចំណាំ</label>
+         
+        <textarea
+          id="newNote"
+          rows="3"
+           placeholder="បញ្ចូលចំណាំ..."
+        ></textarea>
+      </div>
+
+    </div>
+
+    <div class="edit-footer">
+
+      <button class="save-btn"
+      onclick="saveNewGuest()"
+      style="background:#28a745;font-family: khmer os;">
+        💾 រក្សាទុក​
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+
+
+
+
+
+
+</div>
+
+<!-- DELETE CONFIRM MODAL -->
+<div class="modal" id="deleteModal">
+
+  <div class="box" >
+
+    <h3 style="color: red;">❌ លុបទិន្នន័យ</h3>
+
+    <p>តើអ្នកពិតជាចង់លុបទិន្នន័យនេះមែនទេ?</p>
+<div style="
+  display:flex;
+  gap:10px;
+  margin-top:15px;
+">
+
+  <button
+    class="close"
+    onclick="closeDeleteModal()"
+    style="
+      flex:1;
+      padding:12px;
+      border-radius:10px;
+      border:none;
+      background:#b4b6b858;
+      color:rgb(255, 0, 0);
+      font-weight:bold;
+      cursor:pointer;
+       font-family:'Khmer OS Battambang';
+    ">
+    ❌ បោះបង់
+  </button>
+
+  <button
+    class="save"
+    onclick="confirmDelete()"
+    style="
+      flex:1;
+      padding:12px;
+      border-radius:10px;
+      border:none;
+      background:#dc3545;
+      color:white;
+      font-weight:bold;
+      cursor:pointer;
+      font-family:'Khmer OS Battambang';
+    ">
+    🗑 លុបទិន្នន័យ
+  </button>
+
+</div>
+
+  </div>
+
+
+
+
+
+
+</div>
+  <div id="allModal" class="modal">
+
+  <div class="modal-box">
+
+    <div class="modal-header">
+      <h3>ជ្រើរើសឈ្មោះភ្ញៀវ</h3>
+      <button class="close-btn" onclick="closeAllModal()">X</button>
+    </div>
+
+    <input type="text" id="modalSearch" placeholder="🔍 Search..." onkeyup="filterModal()">
+
+    <div id="modalList" class="modal-list">
+      <div>Loading...</div>
+    </div>
+
+  </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+<div id="toast"></div>
+<div id="loadingOverlay">⏳ កំពុងរក្សាទុក...</div>
+
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyBuKVB0z6NVtepmjE33qXxrxs8RcmCOwd0",
+  authDomain:"create-db14a.firebaseapp.com",
+  projectId:"create-db14a"
+});
+
+const db = firebase.firestore();
+const qr = new Html5Qrcode("reader");
+
+// 🔊 SOUND HERE 👇
+let scanSound = new Audio("https://www.soundjay.com/buttons/sounds/button-3.mp3");
+scanSound.preload = "auto";
+scanSound.volume = 1;
+const modal = document.getElementById("modal");
+const nameInput = document.getElementById("name");
+const usdInput = document.getElementById("usd");
+const khrInput = document.getElementById("khr");
+const noteInput = document.getElementById("note"); // ✅ add this
+
+const tableBody = document.getElementById("tableBody");
+
+let scanned = false;
+let cameraRunning = false;
+let deleteId = null;
+/* TELEGRAM */
+const BOT_TOKEN = "7654128263:AAG7Bfl_kPF9aOnE0hltHpCGqQlTE1H9wCg";
+const CHAT_ID = "6567570219";
+
+
+async function sendToTelegram(data){
+
+  // 🔥 បើ USD/KHR អត់មាន មិនបង្ហាញ
+  let usdText = "";
+  let khrText = "";
+
+  if(Number(data.usd) > 0){
+    usdText = `💵 <b>ដុល្លារ:</b> <code>$${data.usd}</code>\n`;
+  }
+  if(Number(data.khr) > 0){
+    khrText = `💴 <b>រៀល:</b> <code>${data.khr}៛</code>\n`;
+  }
+  const text =
+`
+🆔 <b>ID:</b> <code>${data.guestId || "-"}</code>
+👤 <b>ឈ្មោះ:</b> ${data.name}
+${usdText}${khrText}
+📝 <b>ចំណាំ:</b> ${data.note || "-"}
+━━━━━━━━━━━━━━
+⏰ <b>Time:</b> ${new Date().toLocaleString()}
+`;
+
+  try{
+
+    const res = await fetch(
+      `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
+      {
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json"
+        },
+        body:JSON.stringify({
+          chat_id: CHAT_ID,
+          text: text,
+          parse_mode: "HTML"
+        })
+      }
+    );
+
+    const result = await res.json();
+
+    console.log("Telegram result:", result);
+
+    if(!result.ok){
+      alert("Telegram Error: " + result.description);
+    }
+
+  }catch(err){
+
+    console.log("Telegram fetch failed:", err);
+
+    alert("Telegram network error");
+  }
+}
+
+function searchTable(){
+
+  const filter = document
+    .getElementById("searchBox")
+    .value
+    .toLowerCase()
+    .trim();
+
+  const rows = document.querySelectorAll("#tableBody tr");
+
+  rows.forEach(row => {
+
+    const idCell = row.cells[0];
+    const nameCell = row.cells[1];
+
+    const idText = idCell.innerText;
+    const nameText = nameCell.innerText;
+
+    // reset
+    idCell.innerHTML = idText;
+    nameCell.innerHTML = nameText;
+
+    if(filter === ""){
+      row.style.display = "";
+      return;
+    }
+
+    const found =
+      idText.toLowerCase().includes(filter) ||
+      nameText.toLowerCase().includes(filter);
+
+    if(found){
+
+      row.style.display = "";
+
+      const regex = new RegExp(
+        filter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+        "gi"
+      );
+
+      idCell.innerHTML = idText.replace(regex,
+        m => `<span class="highlight">${m}</span>`
+      );
+
+      nameCell.innerHTML = nameText.replace(regex,
+        m => `<span class="highlight">${m}</span>`
+      );
+
+    }else{
+
+      row.style.display = "none";
+
+    }
+
+  });
+
+}
+async function getBestCameraId(){
+
+  const cams = await Html5Qrcode.getCameras();
+
+  if(!cams.length){
+    throw new Error("No camera found");
+  }
+
+  let selected = cams[0].id;
+
+  for(const cam of cams){
+    const name = (cam.label || "").toLowerCase();
+
+    if(name.includes("back") || name.includes("rear")){
+      return cam.id; // 📱 mobile back camera
+    }
+
+    if(name.includes("usb") || name.includes("webcam")){
+      selected = cam.id;
+    }
+  }
+
+  return selected;
+}
+/* CLEAN */
+function goBack(){
+  window.location.href = "index.html";
+}
+function clean(t){
+  return (t||"").replace(/[\uFFFD�]/g,"").trim();
+}
+async function startScan(){
+  try{
+
+    const cameraId = await getBestCameraId();
+
+    if(cameraRunning){
+      await safeStop();
+    }
+
+    scanned = false;
+    cameraRunning = true;
+
+    showScanLine();
+
+    // 🔥 ដាក់ទីនេះ (UNLOCK SOUND)
+    scanSound.play().then(()=>{
+      scanSound.pause();
+      scanSound.currentTime = 0;
+    });
+
+    await qr.start(
+      cameraId,
+      { fps: 10, qrbox: 250 },
+      async (decodedText)=>{
+
+        // 🔊 sound ពេល scan ជោគជ័យ
+        scanSound.currentTime = 0;
+        scanSound.play().catch(()=>{});
+
+        navigator.vibrate?.(150);
+
+        document.getElementById("result").innerText = decodedText;
+
+        if(scanned) return;
+        scanned = true;
+
+        await safeStop();
+        hideScanLine();
+        openModal(decodedText);
+
+      },
+      (err)=>{}
+    );
+
+  }catch(e){
+    hideScanLine();
+    alert("Camera Error: " + e.message);
+  }
+}
+async function safeStop(){
+  try{
+    if(cameraRunning){
+      await qr.stop();
+    }
+  }catch(e){
+    console.log("stop error:", e);
+  }
+  cameraRunning = false;
+}
+function showScanLine(){
+  const line = document.querySelector(".scan-line");
+  if(line) line.style.display = "block";
+}
+
+function hideScanLine(){
+  const line = document.querySelector(".scan-line");
+  if(line) line.style.display = "none";
+}
+
+
+
+/* IMAGE */
+async function scanImage(input){
+  const file=input.files[0];
+  const text=await qr.scanFile(file);
+  openModal(text);
+}
+
+/* MODAL */
+function openModal(qrText){
+
+  modal.style.display = "flex";
+
+  // CLEAN
+  qrText = clean(qrText);
+
+  let guestId = "";
+  let guestName = "";
+
+  // Parse QR
+  if(qrText.includes("ID:") || qrText.includes("NAME:")){
+
+    const lines = qrText.split("\n");
+
+    lines.forEach(line=>{
+
+      line = line.trim();
+
+      if(line.startsWith("ID:")){
+        guestId = line.replace("ID:","").trim();
+      }
+
+      if(line.startsWith("NAME:")){
+        guestName = line.replace("NAME:","").trim();
+      }
+
+    });
+
+  }else{
+
+    // fallback
+    guestName = qrText;
+  }
+
+  // SHOW
+  document.getElementById("guestId").value = guestId;
+  nameInput.value = guestName;
+
+  usdInput.value = "";
+  khrInput.value = "";
+  noteInput.value = "";
+}
+
+function closeModal(){
+  modal.style.display="none";
+}
+
+
+
+/* REALTIME + TOTAL */
+db.collection("qr_payments")
+.orderBy("time","desc")
+.onSnapshot(snap=>{
+
+  let html="";
+  let totalUSD=0;
+  let totalKHR=0;
+  let count=0;
+
+  snap.forEach(doc=>{
+    const d=doc.data();
+
+    count++;
+    totalUSD+=Number(d.usd||0);
+    totalKHR+=Number(d.khr||0);
+
+html+=`
+<tr onclick='editData("${doc.id}", ${JSON.stringify(d)})'>
+  <td>${d.guestId || ""}</td>
+  <td class="ok">${d.name||""}</td>
+  <td style="color:#28a745;font-weight:bold;">${d.usd||0} $</td>
+  <td style="color:#ff9800;font-weight:bold;">${d.khr||0} ៛</td>
+  <td style="
+  color:${d.updated ? 'red' : '#6c757d'};
+  font-weight:${d.updated ? 'bold' : 'normal'};
+">
+  ${d.createdAt || ""}
+  ${d.updated ? ' ' : ''}
+</td>
+  <td style="color:#6c757d;font-size:12px">${d.note||""}</td>
+  <td>
+  <button class="delete-btn"
+  onclick="event.stopPropagation(); openDelete('${doc.id}')">
+    <i class="fa fa-trash"></i>
+  </button>
+</td>
+</tr>
+`;
+  });
+
+  tableBody.innerHTML=html;
+
+  document.getElementById("totalGuest").innerText=count;
+  document.getElementById("totalUSD").innerText=totalUSD.toLocaleString();
+  document.getElementById("totalKHR").innerText=totalKHR.toLocaleString();
+
+});
+
+let editId = null;
+let isEdit = false;
+
+async function editData(id,data){
+
+  isEdit = true;
+  editId = id;
+
+  modal.style.display = "flex";
+
+  // 🔥 ID
+  document.getElementById("guestId").value = data.guestId || "";
+
+  // 🔥 NAME
+  nameInput.value = data.name || "";
+
+  // 🔥 MONEY
+  usdInput.value = data.usd || 0;
+  khrInput.value = data.khr || 0;
+
+  // 🔥 NOTE
+  noteInput.value = data.note || "";
+
+}
+async function saveData(){
+
+  const loading = document.getElementById("loadingOverlay");
+
+  loading.style.display = "flex";
+
+  const guestId = document.getElementById("guestId").value.trim();
+
+  const data = {
+    guestId: guestId,
+    name: nameInput.value,
+    usd: Number(usdInput.value) || 0,
+    khr: Number(khrInput.value) || 0,
+    note: noteInput.value,
+    time: Date.now(),
+    createdAt: new Date().toLocaleString()
+  };
+
+  // 🔥 ត្រូវមាន USD ឬ KHR យ៉ាងហោចណាស់ 1
+  if(data.usd <= 0 && data.khr <= 0){
+
+    loading.style.display = "none";
+
+    showToast("❌ សូមបញ្ចូល ដុល្លារ ឬ រៀល","error");
+
+    return;
+  }
+
+  try{
+
+    // 🔥 CHECK DUPLICATE ID
+    const checkSnap = await db.collection("qr_payments")
+      .where("guestId","==",guestId)
+      .get();
+
+    // 🔥 បើមាន ID រួចហើយ
+    if(!checkSnap.empty && !isEdit){
+
+      loading.style.display = "none";
+
+      showToast("❌ ID នេះបាន Scan រួចហើយ សូមបង្កើតឈ្មោះថ្មី","error");
+
+      return;
+    }
+
+    // 🔥 UPDATE
+    if(isEdit){
+
+  await db.collection("qr_payments")
+  .doc(editId)
+  .update({
+    ...data,
+    updated:true
+  });
+  // 🔥 REFRESH
+  loadQR();
+  showToast("✅ កែប្រែបានជោគជ័យ","success");
+
+}else{
+
+      // 🔥 SAVE
+      await db.collection("qr_payments")
+      .add(data);
+
+      await sendToTelegram(data);
+
+      showToast("✅ រក្សាទុកបានជោគជ័យ","success");
+    }
+
+    closeModal();
+
+    isEdit = false;
+    editId = null;
+
+  }catch(err){
+
+    console.log(err);
+
+    showToast("❌ រក្សាទុក បរាជ័យ","error");
+
+  }finally{
+
+    loading.style.display = "none";
+  }
+}
+function showToast(message,type="success"){
+
+  const toast = document.getElementById("toast");
+
+  toast.innerText = message;
+
+  toast.className = "";
+  toast.classList.add("show",type);
+
+  setTimeout(()=>{
+    toast.classList.remove("show");
+  },2500);
+}
+
+
+
+async function confirmDelete(){
+
+  const loading = document.getElementById("loadingOverlay");
+
+  loading.style.display = "flex";
+
+  try{
+
+    await db.collection("qr_payments")
+    .doc(deleteId)
+    .delete();
+
+    showToast("🗑 លុប បានជោគជ័យ","success");
+
+  }catch(err){
+
+    console.log(err);
+
+    showToast("❌ លុប បរាជ័យ","error");
+
+  }finally{
+
+    loading.style.display = "none";
+    closeDeleteModal();
+    deleteId = null;
+  }
+}
+
+function openDelete(id){
+
+  deleteId = id;
+
+  document.getElementById("deleteModal")
+  .style.display = "flex";
+}
+function closeDeleteModal(){
+  document.getElementById("deleteModal")
+  .style.display = "none";
+}
+
+
+
+
+
+async function exportExcel(){
+
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("INVOICE");
+
+  // ======================
+  // 🧾 TITLE
+  // ======================
+  sheet.mergeCells("A1:F1");
+  const title = sheet.getCell("A1");
+
+  title.value = "បញ្ជីចំណងដៃ";
+  title.font = {
+    name: "Khmer OS Battambang",
+    bold: true,
+    size: 18,
+    color: { argb: "FFFFFFFF" }
+  };
+
+  title.alignment = {
+    horizontal: "center",
+    vertical: "middle"
+  };
+
+  title.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FF1AA4BD" } // blue
+  };
+
+  // ======================
+  // HEADER ROW
+  // ======================
+  const headerRow = sheet.addRow([
+    "លេខរៀង",
+    "ឈ្មោះ",
+    "ដុល្លារ",
+    "រៀល",
+    "បរិច្ចេក",
+    "ចំណាំ"
+  ]);
+
+  headerRow.eachCell(cell=>{
+    cell.font = {
+      name: "Khmer OS Battambang",
+      bold: true,
+      color: { argb: "FFFFFFFF" }
+    };
+
+    cell.alignment = {
+      horizontal: "center",
+      vertical: "middle"
+    };
+
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF0D6EFD" }
+    };
+
+    cell.border = {
+      top: { style: "thin" },
+      left: { style: "thin" },
+      right: { style: "thin" },
+      bottom: { style: "thin" }
+    };
+  });
+
+  let no = 1;
+  let totalUSD = 0;
+  let totalKHR = 0;
+  let count = 0;
+
+  const snap = await db.collection("qr_payments")
+    .orderBy("time","desc")
+    .get();
+
+  snap.forEach(doc=>{
+    const d = doc.data();
+
+    const row = sheet.addRow([
+      no++,
+      d.name || "",
+      d.usd || 0,
+      d.khr || 0,
+      d.createdAt || "",
+      d.note || ""
+    ]);
+
+    totalUSD += Number(d.usd || 0);
+    totalKHR += Number(d.khr || 0);
+    count++;
+
+    // ======================
+    // ROW STYLE (ZEBRA)
+    // ======================
+    const bg = (no % 2 === 0) ? "FFF5FAFF" : "FFFFFFFF";
+
+    row.eachCell(cell=>{
+      cell.font = { name:"Khmer OS Battambang" };
+
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: bg }
+      };
+
+      cell.border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        right: { style: "thin" },
+        bottom: { style: "thin" }
+      };
+    });
+  });
+
+  // ======================
+  // SUMMARY TITLE
+  // ======================
+  sheet.addRow([]);
+  const summaryTitle = sheet.addRow([" ទិន្នន័យសរុបរួម"]);
+
+  summaryTitle.font = {
+    name:"Khmer OS Battambang",
+    bold: true,
+    size: 14
+  };
+
+  summaryTitle.alignment = { horizontal:"center" };
+
+  // ======================
+  // SUMMARY DATA
+  // ======================
+  const s1 = sheet.addRow([" សរុបភ្ញៀវចងដៃ", count]);
+  const s2 = sheet.addRow([" សរុបដុល្លារ", totalUSD]);
+  const s3 = sheet.addRow([" សរុបរៀល", totalKHR]);
+
+  [s1,s2,s3].forEach(r=>{
+    r.eachCell(cell=>{
+      cell.font = { name:"Khmer OS Battambang" };
+
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFF1F7FF" }
+      };
+
+      cell.border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        right: { style: "thin" },
+        bottom: { style: "thin" }
+      };
+    });
+  });
+
+  // ======================
+  // AUTO COLUMN WIDTH
+  // ======================
+  sheet.columns.forEach(col=>{
+    let max = 10;
+
+    col.eachCell(cell=>{
+      const len = cell.value ? cell.value.toString().length : 10;
+      if(len > max) max = len;
+    });
+
+    col.width = max + 4;
+  });
+
+  // ======================
+  // DOWNLOAD
+  // ======================
+  const buffer = await workbook.xlsx.writeBuffer();
+
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  });
+
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "បញ្ជីចំណងដៃ.xlsx";
+  link.click();
+}
+
+
+// ===============================
+// 🔥 QR DATA + AUTO REALTIME
+// ===============================
+
+let qrList = [];
+let paidSet = new Set();
+
+
+// 🔥 AUTO REALTIME RELOAD
+db.collection("qr_payments")
+.onSnapshot(()=>{
+
+  loadQR();
+
+});
+
+db.collection("qrData")
+.onSnapshot(()=>{
+
+  loadQR();
+
+});
+
+
+// ===============================
+// 🔥 LOAD QR + PAYMENT
+// ===============================
+async function loadQR(){
+
+  try{
+
+    const qrSnap = await db.collection("qrData").get();
+    const paySnap = await db.collection("qr_payments").get();
+
+    qrList = [];
+    paidSet = new Set();
+
+    // 🔹 QR DATA
+    qrSnap.forEach(doc=>{
+
+      const d = doc.data();
+
+      qrList.push({
+        id: (d.id || "").toString().trim(),
+        name: (d.name || "").toString().trim()
+      });
+
+    });
+
+    // 🔹 PAYMENT DATA
+    paySnap.forEach(doc=>{
+
+      const d = doc.data();
+
+      const paidId = (d.guestId || "")
+        .toString()
+        .trim();
+
+      if(paidId){
+        paidSet.add(paidId);
+      }
+
+    });
+
+    // 🔥 RENDER
+    renderModal();
+
+  }catch(err){
+
+    console.log("LOAD ERROR:", err);
+
+  }
+
+}
+
+
+// ===============================
+// 🔥 OPEN ALL MODAL
+// ===============================
+function openAllModal(){
+
+  document.getElementById("allModal")
+    .style.display = "flex";
+
+  renderModal();
+
+}
+
+
+// ===============================
+// ❌ CLOSE MODAL
+// ===============================
+function closeAllModal(){
+
+  document.getElementById("allModal")
+    .style.display = "none";
+
+}
+
+
+// ===============================
+// 🔍 SEARCH FILTER
+// ===============================
+function filterModal(){
+
+  renderModal();
+
+}
+
+
+// ===============================
+// 📋 RENDER MODAL LIST
+// ===============================
+function renderModal(){
+
+  const box = document.getElementById("modalList");
+
+  const search = document
+    .getElementById("modalSearch")
+    .value
+    .toLowerCase()
+    .trim();
+
+  box.innerHTML = "";
+
+  // 🔥 FILTER + REMOVE PAID
+  const list = qrList
+
+    .filter(item=>{
+
+      const match =
+        item.id.toLowerCase().includes(search) ||
+        item.name.toLowerCase().includes(search);
+
+      const unpaid =
+        !paidSet.has(item.id);
+
+      return match && unpaid;
+
+    })
+
+    // 🔥 SORT NAME
+    .sort((a,b)=>
+      a.name.localeCompare(b.name)
+    );
+
+  // ❌ EMPTY
+  if(list.length === 0){
+
+    box.innerHTML = `
+      <div style="
+        padding:40px 20px;
+        text-align:center;
+        color:#999;
+      ">
+
+        <div style="
+          font-size:50px;
+          margin-bottom:10px;
+        ">
+          📭
+        </div>
+
+        <div style="
+          font-size:18px;
+          font-weight:bold;
+        ">
+          No Data
+        </div>
+
+        <small>
+          មិនមានទិន្នន័យ
+        </small>
+
+      </div>
+    `;
+
+    return;
+  }
+
+  // 🔥 RENDER ITEMS
+  list.forEach(item=>{
+
+    const div = document.createElement("div");
+
+    div.className = "modal-item";
+
+    // 🔥 SEARCH HIGHLIGHT
+    let showName = item.name;
+    let showId = item.id;
+
+    if(search){
+
+      const regex = new RegExp(
+        `(${search})`,
+        "gi"
+      );
+
+      showName = item.name.replace(
+        regex,
+        `<span style="
+          background:yellow;
+          color:black;
+          padding:1px 4px;
+          border-radius:4px;
+        ">$1</span>`
+      );
+
+      showId = item.id.replace(
+        regex,
+        `<span style="
+          background:yellow;
+          color:black;
+          padding:1px 4px;
+          border-radius:4px;
+        ">$1</span>`
+      );
+
+    }
+
+    div.style.cssText = `
+      padding:14px;
+      border-bottom:1px solid #eee;
+      cursor:pointer;
+      transition:.2s;
+      background:white;
+    `;
+
+    div.innerHTML = `
+
+      <div style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+      ">
+
+        <div>
+
+          <div style="
+            font-size:17px;
+            font-weight:bold;
+            color:#0d6efd;
+          ">
+            👤 ${showName}
+          </div>
+
+          <div style="
+            margin-top:4px;
+            color:#666;
+            font-size:13px;
+          ">
+            ${showId}
+          </div>
+
+        </div>
+
+        <div style="
+          font-size:18px;
+          color:#0d6efd;
+        ">
+          ➜
+        </div>
+
+      </div>
+
+    `;
+
+    // 🔥 HOVER
+    div.onmouseenter = ()=>{
+
+      div.style.background = "#f1f7ff";
+      div.style.transform = "scale(1.01)";
+
+    };
+
+    div.onmouseleave = ()=>{
+
+      div.style.background = "#fff";
+      div.style.transform = "scale(1)";
+
+    };
+
+    // 🔥 CLICK SELECT
+    div.onclick = ()=>{
+
+      // 🔥 OPEN FORM
+      modal.style.display = "flex";
+
+      // 🔥 AUTO FILL
+      document.getElementById("guestId").value =
+        item.id;
+
+      document.getElementById("name").value =
+        item.name;
+
+      // 🔥 RESET
+      document.getElementById("usd").value = "";
+      document.getElementById("khr").value = "";
+      document.getElementById("note").value = "";
+
+      // 🔥 CLOSE ALL MODAL
+      closeAllModal();
+
+    };
+
+    box.appendChild(div);
+
+  });
+
+}
+
+
+// ===============================
+// 🔥 FIRST LOAD
+// ===============================
+loadQR();
+
+window.onload = () => {
+  loadQR();
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* OPEN */
+function openAddNewModal(){
+
+  document.getElementById("addNewModal")
+    .style.display = "flex";
+
+}
+
+/* CLOSE */
+function closeAddNewModal(){
+
+  document.getElementById("addNewModal")
+    .style.display = "none";
+
+}
+
+/* AUTO GENERATE ID */
+async function generateNextId(){
+
+  const snap = await db.collection("qrData")
+    .orderBy("created","desc")
+    .limit(1)
+    .get();
+
+  let next = 1;
+
+  if(!snap.empty){
+
+    const last = snap.docs[0].data();
+
+    const lastId = last.id || "ID0000";
+
+    const num = parseInt(
+      lastId.replace("ID","")
+    );
+
+    next = num + 1;
+  }
+
+  return "ID" + String(next).padStart(4,"0");
+}
+
+/* SAVE NEW */
+async function saveNewGuest(){
+
+  const loading = document.getElementById("loadingOverlay");
+  loading.style.display = "flex";
+
+  const name = document.getElementById("newName").value.trim();
+  const usd = Number(document.getElementById("newUsd").value) || 0;
+  const khr = Number(document.getElementById("newKhr").value) || 0;
+  const note = document.getElementById("newNote").value.trim();
+
+  if(!name){
+    loading.style.display = "none";
+    showToast("❌ សូមបញ្ចូលឈ្មោះ","error");
+    return;
+  }
+
+  if(usd <= 0 && khr <= 0){
+    loading.style.display = "none";
+    showToast("❌ សូមបញ្ចូលលុយ","error");
+    return;
+  }
+
+  try{
+
+    // 🔥 AUTO ID
+    const newId = await generateNextId();
+
+    const data = {
+      guestId: newId,
+      name,
+      usd,
+      khr,
+      note,
+
+      time: Date.now(),
+      createdAt: new Date().toLocaleString()
+    };
+
+    // 🔥 SAVE TO qrData
+    await db.collection("qrData").add({
+      id: newId,
+      name: name,
+      note: note,
+      created: Date.now(),
+      createdAt: new Date().toLocaleString()
+    });
+
+    // 🔥 SAVE TO qr_payments
+    await db.collection("qr_payments").add(data);
+
+    // 🔥 SEND TO TELEGRAM (SYNC)
+    await sendToTelegram(data);
+
+    showToast("✅ បង្កើតបានជោគជ័យ","success");
+
+    // RESET FORM
+    document.getElementById("newName").value = "";
+    document.getElementById("newUsd").value = "";
+    document.getElementById("newKhr").value = "";
+    document.getElementById("newNote").value = "";
+
+    closeAddNewModal();
+
+    // 🔥 AUTO REFRESH DATA
+    await loadQR();
+
+  }catch(err){
+
+    console.log("SAVE ERROR:", err);
+    showToast("❌ Save Error","error");
+
+  }finally{
+
+    loading.style.display = "none";
+  }
+}
+
+
+
+const usbInput = document.getElementById("usbScan");
+
+usbInput.addEventListener("keydown", function(e){
+
+  if(e.key === "Enter"){
+
+    const scannedText = this.value.trim();
+
+    if(scannedText){
+
+      openModal(scannedText);
+
+      scanSound.currentTime = 0;
+      scanSound.play().catch(()=>{});
+
+      navigator.vibrate?.(150);
+
+      this.value = "";
+    }
+  }
+
+});
+
+document.addEventListener("click", ()=>{
+  usbInput.focus();
+});
+
+window.onload = ()=>{
+  usbInput.focus();
+};
+</script>
+
+</body>
+</html>

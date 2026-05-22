@@ -1,1 +1,1 @@
-# scaner
+# scan-qr

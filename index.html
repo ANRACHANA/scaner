@@ -1,0 +1,1563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ប្រព័ន្ធគ្រប់គ្រងភ្ញៀវ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="icon" href="data:,">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+
+body{
+  margin:0;
+  font-family:Khmer OS Bokor;
+  background:#eef4ff;
+}
+
+.topbar{
+  background:#1aa4bd;
+  color:white;
+  padding:5px;
+  display:flex;
+  align-items:center;
+}
+
+.menu-btn{
+  font-size:22px;
+  cursor:pointer;
+  margin-right:10px;
+}
+
+.sidebar{
+  position:fixed;
+  top:0;
+  left:-260px;
+  width:260px;
+  height:100%;
+  background:#111827;
+  color:white;
+  padding-top:60px;
+  transition:0.3s;
+  z-index:100;
+}
+
+.sidebar a{
+  display:block;
+  padding:12px;
+  cursor:pointer;
+  color:white;
+  text-decoration:none;
+}
+
+.sidebar a:hover{
+  background:#1aa4bd;
+}
+
+.overlay{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.4);
+  display:none;
+  z-index:99;
+}
+.title{
+  text-align:center;
+  margin:15px 0;
+  font-weight:bold;
+  color:#1aa4bd;
+}
+
+/* GRID */
+.dashboard{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:12px;
+  padding:10px;
+}
+
+/* CARD STYLE */
+.box{
+  text-align:center;
+  padding:15px;
+  border-radius:14px;
+  transition:0.3s;
+  cursor:pointer;
+  position:relative;
+  overflow:hidden;
+}
+
+/* HOVER EFFECT */
+.box:hover{
+  transform:translateY(-5px) scale(1.02);
+  box-shadow:0 10px 25px rgba(0,0,0,0.2);
+}
+
+/* COLORS */
+.blue{ background:#e8f1ff; color:#ab0a07; }
+.purple{ background:#f3e8ff; color:#0252ff; }
+.green{ background:#e8ffe9; color:#04c544; }
+.orange{ background:#fff3e6; color:#ff9800; }
+.red{ background:#ffffff; color:#df1313; }
+
+/* NUMBER STYLE */
+.box h1{
+  font-size:28px;
+  margin-top:5px;
+  transition:0.3s;
+}
+
+/* SMALL ANIMATION */
+.box:hover h1{
+  transform:scale(1.1);
+}
+.container{
+  max-width:1780px;
+  margin:auto;
+  padding:1px;
+}
+
+.card{
+  background:white;
+  padding:12px;
+  border-radius:10px;
+  margin-bottom:10px;
+  box-shadow:0 6px 15px rgba(2, 104, 138, 0.709);
+}
+
+input{
+  width:95%;
+  padding:10px;
+  margin-top:5px;
+  border:1px solid #ddd;
+  border-radius:8px;
+
+  font-size:16px; /* 🔥 IMPORTANT: stop mobile zoom */
+  outline:none;
+}
+
+button{
+  padding:8px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+.add{background:#0b8196;color:white;  box-shadow:0 3px 10px rgba(4, 74, 171, 0.596);  font-family:Khmer OS Battambang;
+
+}
+.edit{background:#ffc107;}
+.delete{background:#ff4d4d;color:white;}
+
+table{
+  width:100%;
+  table-layout:fixed; /* 🔥 IMPORTANT */
+}
+.table-scroll{
+  max-height: 660px;   /* 👉 កម្ពស់ list */
+  overflow-y: auto;    /* 👉 scroll លើក្រោម */
+  overflow-x: auto;    /* 👉 scroll ឆ្វេងស្តាំ */
+  border-radius:12px;
+  border:1px solid #e3e3e3;
+  background:white;
+}
+
+/* table width fix */
+.table-scroll table{
+  width:100%;
+  min-width:800px; /* 👉 បង្ខំអោយមាន horizontal scroll */
+  border-collapse:collapse;
+}
+
+/* header sticky */
+.table-scroll thead th{
+  position:sticky;
+  top:0;
+  background:#1aa4bd;
+  color:white;
+  z-index:10;
+}
+
+/* row style */
+.table-scroll td,
+.table-scroll th{
+  padding:10px;
+  text-align:center;
+  border-bottom:1px solid #eee;
+}
+
+/* hover */
+.table-scroll tbody tr:hover{
+  background:#f2f9ff;
+}
+
+/* scrollbar style */
+.table-scroll::-webkit-scrollbar{
+  width:6px;
+  height:6px;
+}
+
+.table-scroll::-webkit-scrollbar-thumb{
+  background:#1aa4bd;
+  border-radius:10px;
+}
+th,td{
+  padding:8px;
+  border-bottom:1px solid #eee;
+  font-size:14px;
+}
+
+.page{display:none;}
+.highlight{
+  background: yellow;
+  color: black;
+  padding:2px 4px;
+  border-radius:4px;
+  font-weight:bold;
+}
+
+
+#loadingOverlay{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.6);
+  color:#fff;
+  font-size:18px;
+  font-weight:bold;
+  justify-content:center;
+  align-items:center;
+  z-index:9999;
+}
+#toast{
+  position:fixed;
+  top:20px;
+  right:20px;
+  min-width:220px;
+  padding:14px 18px;
+  border-radius:12px;
+  color:white;
+  font-weight:bold;
+  z-index:999999;
+
+  opacity:0;
+  transform:translateY(-20px);
+
+  transition:.3s;
+  pointer-events:none;
+
+  box-shadow:0 8px 20px rgba(0,0,0,.25);
+}
+
+#toast.show{
+  opacity:1;
+  transform:translateY(0);
+}
+
+#toast.success{
+  background:#28a746f6;
+}
+
+#toast.error{
+  background:#dc354689;
+}
+.edit-modal{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.6);
+  z-index:99999;
+  justify-content:center;
+  align-items:center;
+}
+
+.edit-box{
+  width:100%;
+  max-width:700px;
+  background:#fff;
+  border-radius:20px;
+  overflow:hidden;
+  box-shadow:0 15px 45px rgba(0,0,0,.25);
+  animation:popup .25s ease;
+}
+
+@keyframes popup{
+  from{transform:scale(.85);opacity:0;}
+  to{transform:scale(1);opacity:1;}
+}
+
+.edit-header{
+  background:linear-gradient(135deg,#1aa4bd,#0d6efd);
+  color:#fff;
+  padding:18px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.edit-header h2{
+  margin:0;
+  font-size:20px;
+}
+
+.edit-header small{
+  opacity:.85;
+}
+
+.edit-body{
+  padding:18px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.edit-body input{
+  padding:12px;
+  border:1px solid #ddd;
+  border-radius:12px;
+  font-size:15px;
+  outline:none;
+}
+
+.edit-body input:focus{
+  border-color:#1aa4bd;
+  box-shadow:0 0 0 3px rgba(26,164,189,.15);
+}
+
+.edit-footer{
+  padding:15px 18px;
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  border-top:1px solid #eee;
+}
+
+.edit-footer button{
+  padding:10px 14px;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:bold;
+}
+</style>
+</head>
+
+<body>
+
+<div class="topbar">
+  <div class="menu-btn" onclick="openMenu()">☰</div>
+  <div>គ្រប់គ្រង់ភ្ញៀវ</div>
+</div>
+
+<div class="overlay" id="overlay" onclick="closeMenu()"></div>
+
+<div class="sidebar" id="sidebar">
+
+  <a onclick="goPage('home')">
+    📊 មើលទិន្នន័យ
+  </a>
+
+  <a onclick="goPage('list')">
+    📋 ចុះឈ្មោះភ្ញៀវ
+  </a>
+
+  
+
+  <a onclick="goScan()">
+    📷 ស្គែនភ្ញៀវ
+  </a>
+  <!-- NEW -->
+  <a onclick="openUnpaidPage()" 
+   style="
+     display:flex;
+     justify-content:space-between;
+     align-items:center;
+   ">
+
+  <span style="color: red;">
+    🔔 មិនទាន់ចងដៃ
+  </span>
+
+  <span id="pendingBadge"
+    style="
+      background:#ff3b30;
+      color:white;
+      min-width:12px;
+      height:22px;
+      padding:0 6px;
+      border-radius:50px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:12px;
+      font-weight:bold;
+      box-shadow:0 2px 8px rgba(0,0,0,.2);
+    ">
+    0
+  </span>
+
+</a>
+
+</div>
+
+
+<div class="container">
+<!-- DASHBOARD -->
+  <div id="home" class="page">
+
+    <h2 class="title">📊 ទិន្នន័យសរុបរួម</h2>
+
+    <div class="dashboard">
+
+      <div class="card box blue"onclick="goPage('list')" style="cursor:pointer;">
+        <h4>👥 ភ្ញៀវសរុប</h4>
+        <h1 id="totalQR">0</h1>
+      </div>
+
+      <div class="card box purple" onclick="goScan()"style="cursor:pointer;">
+        <h4>👥 ភ្ញៀវចងដៃ</h4>
+        <h1 id="totalList">0</h1>
+      </div>
+      
+      <div class="card box green">
+        <h4>💵 ដុល្លារ</h4>
+        <h1 id="totalUSD">0</h1>
+      </div>
+
+      <div class="card box orange">
+        <h4>💴 រៀល</h4>
+        <h1 id="totalKHR">0</h1>
+      </div>
+      <div class="card box red" onclick="openUnpaidPage()" style="cursor:pointer;">
+    <h4>👥 មិនទាន់ចងដៃ</h4>
+    <h1 id="totalUnpaid">0</h1>
+  </div>
+    </div>
+  <div class="card" onclick="goPage('home')" style="cursor:pointer;">
+
+  <h3 style="margin-bottom:10px;color:#1aa4bd;">
+    📊 Chart Overview
+  </h3>
+
+  <div style="
+    display:flex;
+    gap:15px;
+    flex-wrap:wrap;
+    justify-content:center;
+    align-items:center;
+  ">
+
+    <div style="width:250px; height:250px;">
+      <canvas id="pieChart"></canvas>
+    </div>
+
+    <div style="flex:1; min-width:100px;">
+      <canvas id="barChart" height="85"></canvas>
+    </div>
+
+  </div>
+
+</div>
+
+</div>
+
+
+
+<!-- LIST -->
+<div id="list" class="page">
+
+  <div class="card" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+
+  <!-- NAME -->
+  <input id="name" placeholder="បញ្ជូលឈ្មោះភ្ញៀវ..." 
+    style="flex:1;min-width:180px;">
+
+  <!-- NOTE -->
+  <input id="note" placeholder="ចំណាំ..." 
+    style="flex:1;min-width:150px;">
+
+  <!-- BUTTON -->
+  <button class="add" onclick="addData()" 
+    style="min-width:120px;">
+    រក្សាទុក
+  </button>
+
+</div>
+
+<div class="card">
+ <input
+  style="width:30%;background-color:#f3f8f9b2;color:black;font-size:12px;font-family:Khmer OS Bokor;"
+  type="text"
+  id="mainSearch"
+  placeholder="🔍 ស្វែងរកឈ្មោះ / ID..."
+>
+        
+     <button onclick="printSelected()" style="background:#9e9e9b;color:white;">
+      Print QR
+    </button>
+
+    <button onclick="exportSelected()" style="background:#05b041;color:white;">
+      📥 Export Excel
+    </button>
+    <div class="table-scroll">
+  <table>
+    <thead>
+<tr>
+  <th style="width:5%;">
+    <input type="checkbox" onclick="toggleAll(this)">
+  </th>
+  <th style="width:10%;">ល.រ</th>
+  <th style="width:15%;">ID</th>
+  <th style="width:25%;">ឈ្មោះ</th>
+  <th style="width:20%;">QR</th>
+  <th style="width:22%;">ចំណាំ</th>
+  <th style="width:15%;">កំណត់</th>
+</tr>
+</thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+ </div>
+  </div>
+
+</div>
+
+<!-- QR MODAL -->
+<div id="qrModal" onclick="closeQR()" style="
+  display:none;
+  position:fixed;
+  top:0;left:0;
+  width:100%;height:100%;
+  background:rgba(0,0,0,0.7);
+  z-index:999;
+  justify-content:center;
+  align-items:center;
+">
+
+  <div onclick="event.stopPropagation()" style="background:white;padding:20px;border-radius:12px;text-align:center;">
+
+    <div id="qrBig"></div>
+    <p id="qrText" style="margin-top:10px;"></p>
+
+    <button onclick="downloadQR()" style="
+      margin-top:10px;
+      background:#1aa4bd;
+      color:white;
+      padding:8px 12px;
+      border:none;
+      border-radius:8px;
+      cursor:pointer;
+    ">
+      📥 Download PNG
+    </button>
+
+  </div>
+
+</div>
+<!-- EDIT MODAL -->
+<div id="editModal" class="edit-modal">
+
+  <div class="edit-box">
+
+    <!-- HEADER -->
+    <div class="edit-header">
+      <div>
+        <h2>✏️ កែប្រែទិន្នន័យ</h2>
+        <small>កែប្រែពត័មានភ្ញៀវ</small>
+      </div>
+      <span onclick="closeEditModal()" style="cursor:pointer;font-size:18px;">✖</span>
+    </div>
+
+    <!-- BODY -->
+    <div class="edit-body">
+
+      <input id="editName" placeholder="ឈ្មោះ..." />
+      <input id="editNote" placeholder="ចំណាំ..." />
+
+    </div>
+
+    <!-- FOOTER -->
+    <div class="edit-footer">
+
+      <button onclick="saveEdit()" 
+       style="
+      flex:1;
+      padding:12px;
+      border-radius:10px;
+      border:none;
+      background:#0596c7;
+      color:white;
+      font-weight:bold;
+      cursor:pointer;
+      font-family:'Khmer OS Battambang';
+    ">
+ 
+        💾 រក្សាទុក
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+<div id="pending" class="page">
+
+  <h3 style="color:#e53935;">🔔 បញ្ជីភ្ញៀវមិនទាន់ចងដៃ</h3>
+
+  <div class="card">
+    <!-- SEARCH -->
+<input
+  type="text"
+  id="pendingSearch"
+  placeholder="🔍 ស្វែងរក ឈ្មោះ / ID..."
+  onkeyup="searchPending()"
+/>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>ល.រ</th>
+            <th>ID</th>
+            <th>ឈ្មោះ</th>
+            <th>ស្ថានភាព</th>
+          </tr>
+        </thead>
+
+        <tbody id="pendingTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+<!-- LOADING -->
+<div id="toast"></div>
+<div id="loadingOverlay">⏳ កំពុងរក្សាទុក...</div>
+</div>
+
+<script>
+
+/* FIREBASE */
+firebase.initializeApp({
+  apiKey: "AIzaSyBuKVB0z6NVtepmjE33qXxrxs8RcmCOwd0",
+  authDomain:"create-db14a.firebaseapp.com",
+  projectId:"create-db14a"
+});
+
+const db = firebase.firestore();
+
+/* UI */
+function openMenu(){
+  sidebar.style.left="0";
+  overlay.style.display="block";
+}
+
+function closeMenu(){
+  sidebar.style.left="-260px";
+  overlay.style.display="none";
+}
+
+function goPage(p){
+  document.querySelectorAll(".page").forEach(x=>x.style.display="none");
+  document.getElementById(p).style.display="block";
+  closeMenu();
+}
+goPage("home");
+function goScan(){
+  window.location.href = "scan.html";
+}
+/* DATA */
+let dataList=[];
+let search="";
+let currentQRText="";
+let unpaidData = [];
+db.collection("qrData")
+.onSnapshot(()=>{
+
+  livePendingBadge();
+
+});
+
+db.collection("qr_payments")
+.onSnapshot(()=>{
+
+  livePendingBadge();
+
+});
+/* ADD */
+async function addData(){
+
+  const loading = document.getElementById("loadingOverlay");
+
+  // 🔥 SHOW LOADING
+  loading.style.display = "flex";
+
+  let name = document.getElementById("name").value.trim();
+  let note = document.getElementById("note")?.value.trim() || "";
+
+  if(!name){
+
+    loading.style.display = "none";
+
+    alert("⚠️ សូមបញ្ចូលឈ្មោះ!");
+    return;
+  }
+
+  try{
+
+    let autoId = await generateAutoId();
+
+    await db.collection("qrData").add({
+      id: autoId,
+      name: name,
+      note: note,
+      created: Date.now(),
+      createdAt: new Date().toLocaleString("km-KH")
+    });
+
+    document.getElementById("name").value = "";
+
+    if(document.getElementById("note")){
+      document.getElementById("note").value = "";
+    }
+
+    // ✅ SUCCESS
+    showToast("✅ រក្សាទុកបានជោគជ័យ","success");
+
+  }catch(err){
+
+    console.error(err);
+
+    // ❌ ERROR
+    showToast("❌ រក្សាទុកមិនបាន","error");
+
+  }finally{
+
+    // 🔥 HIDE LOADING
+    loading.style.display = "none";
+  }
+}
+let editDocId = null;
+function edit(id, name, note = ""){
+
+  editDocId = id;
+
+  document.getElementById("editName").value = name;
+  document.getElementById("editNote").value = note;
+
+  document.getElementById("editModal").style.display = "flex";
+}
+async function saveEdit(){
+
+  const loading = document.getElementById("loadingOverlay");
+
+  let newName = document.getElementById("editName").value.trim();
+  let newNote = document.getElementById("editNote").value.trim();
+
+  if(!newName){
+    alert("សូមបញ្ចូលឈ្មោះ!");
+    return;
+  }
+
+  // 🔥 SHOW LOADING
+  loading.style.display = "flex";
+
+  try{
+
+    await db.collection("qrData").doc(editDocId).update({
+      name: newName,
+      note: newNote
+    });
+
+    closeEditModal();
+
+    showToast("✅ កែប្រែជោគជ័យ","success");
+
+  }catch(err){
+
+    console.error(err);
+    showToast("❌ កែប្រែមិនបាន","error");
+
+  }finally{
+
+    // 🔥 HIDE LOADING
+    loading.style.display = "none";
+  }
+}
+function closeEditModal(){
+  document.getElementById("editModal").style.display = "none";
+  editDocId = null;
+}
+document.getElementById("editModal").addEventListener("click", function(e){
+  if(e.target === this){
+    closeEditModal();
+  }
+});
+
+function showToast(message,type="success"){
+
+  const toast = document.getElementById("toast");
+
+  toast.innerText = message;
+
+  toast.className = "";
+  toast.classList.add("show",type);
+
+  setTimeout(()=>{
+    toast.classList.remove("show");
+  },2500);
+}
+
+async function generateAutoId(){
+
+  let snap = await db.collection("qrData")
+    .orderBy("created", "desc")
+    .limit(1)
+    .get();
+
+  if(snap.empty){
+    return "ID0001";
+  }
+
+  let lastData = snap.docs[0].data();
+  let lastId = lastData.id || "ID0000";
+
+  let number = parseInt(lastId.replace("ID","")) || 0;
+  number++;
+
+  return "ID" + String(number).padStart(4,"0");
+}
+
+
+
+
+
+/* REALTIME */
+db.collection("qrData").onSnapshot(snap=>{
+  dataList=[];
+  snap.forEach(d=>{
+    dataList.push({
+  docId: d.id,
+  ...d.data()
+});
+  });
+  render();
+  document.getElementById("totalQR").innerText=dataList.length;
+  // CALL CHART
+renderCharts(
+  dataList.length,
+  Number(document.getElementById("totalList").innerText) || 0,
+  Number(document.getElementById("totalUSD").innerText.replace(/,/g,'')) || 0,
+  Number(document.getElementById("totalKHR").innerText.replace(/,/g,'')) || 0
+);
+});
+
+/* SEARCH */
+document.getElementById("mainSearch")
+.addEventListener("input",(e)=>{
+
+  search = e.target.value.toLowerCase();
+
+  render();
+
+});
+
+/* RENDER */
+function render(){
+
+  let html = "";
+  let no = 1;
+
+  dataList.forEach(i=>{
+
+    // 🔍 SEARCH NAME + ID
+    if(
+      (i.name || "").toLowerCase().includes(search) ||
+      (i.id || "").toLowerCase().includes(search)
+    ){
+
+      html += `
+<tr>
+
+  <!-- CHECKBOX -->
+  <td>
+    <input 
+      type="checkbox" 
+      class="cb" 
+      value="${i.docId}">
+  </td>
+
+  <!-- NO -->
+  <td>${no++}</td>
+
+  <!-- ID -->
+  <td>${i.id || "-"}</td>
+
+  <!-- NAME -->
+  <td>${i.name || "-"}</td>
+
+  <!-- QR -->
+  <td style="text-align:center;">
+    <div 
+      id="qr-${i.docId}" 
+      style="
+        display:flex;
+        justify-content:center;
+        align-items:center;
+      ">
+    </div>
+  </td>
+
+  <!-- NOTE -->
+  <td style="font-size:12px;color:#555;">
+    ${i.note || "-"}
+  </td>
+
+  <!-- ACTION -->
+  <td>
+
+    <button 
+      class="edit"
+      onclick="edit(
+        '${i.docId}',
+        '${i.name}',
+        '${i.note || ""}'
+      )">
+      ✏️
+    </button>
+
+    <button 
+      class="delete"
+      onclick="del('${i.docId}')">
+      🗑
+    </button>
+
+  </td>
+
+</tr>
+`;
+    }
+  });
+
+  // 🔥 INSERT TABLE
+  document.getElementById("tableBody").innerHTML = html;
+
+  // 🔥 GENERATE QR
+  setTimeout(()=>{
+
+    dataList.forEach(i=>{
+
+      let el = document.getElementById("qr-" + i.docId);
+
+      if(el){
+
+        el.innerHTML = "";
+
+        let div = document.createElement("div");
+
+        new QRCode(div,{
+          text:`ID: ${i.id}\nNAME: ${i.name}`,
+          width:70,
+          height:70
+        });
+
+        // 🔍 CLICK VIEW BIG QR
+        div.onclick = ()=>showQR(
+          `ID: ${i.id}\nNAME: ${i.name}`
+        );
+
+        el.appendChild(div);
+      }
+
+    });
+
+  },100);
+
+}
+
+/* QR SHOW */
+function showQR(text){
+
+  currentQRText = text;
+
+  document.getElementById("qrModal").style.display="flex";
+  document.getElementById("qrBig").innerHTML="";
+  document.getElementById("qrText").innerText=text;
+
+  new QRCode(document.getElementById("qrBig"),{
+    text:text,
+    width:250,
+    height:250
+  });
+}
+
+/* DOWNLOAD */
+function downloadQR(){
+
+  let canvas=document.querySelector("#qrBig canvas");
+  if(!canvas){
+    alert("QR not ready!");
+    return;
+  }
+
+  let a=document.createElement("a");
+  a.href=canvas.toDataURL("image/png");
+  a.download=currentQRText+".png";
+  a.click();
+}
+
+function closeQR(){
+  document.getElementById("qrModal").style.display="none";
+  document.getElementById("qrBig").innerHTML="";
+}
+
+
+
+/* DELETE */
+function del(id){
+  if(confirm("Delete?")){
+    db.collection("qrData").doc(id).delete();
+  }
+}
+
+/* SELECT */
+function toggleAll(cb){
+  document.querySelectorAll(".cb").forEach(c=>{
+    c.checked=cb.checked;
+  });
+}
+
+function getSelected(){
+  let ids=[...document.querySelectorAll(".cb:checked")].map(x=>x.value);
+  return dataList.filter(d=>ids.includes(d.docId));
+}
+
+/* PRINT */
+function printSelected(){
+
+  let items = getSelected();
+
+  if(!items.length){
+    return alert("ជ្រើសរើសឈ្មោះភ្ញៀវ");
+  }
+
+  localStorage.setItem("printItems", JSON.stringify(items));
+
+  window.open("print.html", "_blank");
+}
+
+/* EXCEL */
+async function exportSelected(){
+
+  let items = getSelected();
+  if(!items.length) return alert("Select items");
+
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("QR Invoice");
+
+  // ======================
+  // PAGE STYLE
+  // ======================
+  ws.properties.defaultRowHeight = 20;
+
+  ws.columns = [
+    { width: 8 },   // No
+    { width: 28 },  // Name
+    { width: 22 }   // QR
+  ];
+
+  // CENTER ALL COLUMNS
+  ws.getColumn(1).alignment = { horizontal: "center", vertical: "middle" };
+  ws.getColumn(2).alignment = { horizontal: "center", vertical: "middle" };
+  ws.getColumn(3).alignment = { horizontal: "center", vertical: "middle" };
+
+  // ======================
+  // TITLE (TOP HEADER)
+  // ======================
+  const title = ws.addRow(["បញ្ជីឈ្មោះភ្ញៀវ"]);
+
+  ws.mergeCells("A1:C1");
+
+  title.font = {
+    bold: true,
+    size: 18,
+    name: "Khmer OS Battambang",
+    color: { argb: "FFFFFFFF" }
+  };
+
+  title.alignment = {
+    horizontal: "center",
+    vertical: "middle"
+  };
+
+  title.height = 35;
+
+  ws.getCell("A1").fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FF1AA4BD" }
+  };
+
+  // ======================
+  // HEADER ROW
+  // ======================
+  const header = ws.addRow(["លេខរៀង", "ឈ្មោះ", "QR"]);
+
+  header.height = 25;
+
+  header.font = {
+    bold: true,
+    color: { argb: "FFFFFFFF" },
+    name: "Khmer OS Battambang",
+    size: 12
+  };
+
+  header.alignment = {
+    horizontal: "center",
+    vertical: "middle"
+  };
+
+  header.eachCell(cell => {
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF1AA4BD" }
+    };
+
+    cell.border = {
+      top: { style: "thin" },
+      left: { style: "thin" },
+      bottom: { style: "thin" },
+      right: { style: "thin" }
+    };
+  });
+
+  let no = 1;
+
+  // ======================
+  // DATA ROWS
+  // ======================
+  for(const i of items){
+
+    let row = ws.addRow([no++, i.name, ""]);
+
+    row.height = 70;
+
+    row.font = {
+      name: "Khmer OS Battambang",
+      size: 11
+    };
+
+    row.alignment = {
+      horizontal: "center",
+      vertical: "middle"
+    };
+
+    row.eachCell(cell => {
+      cell.border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" }
+      };
+    });
+
+    // ======================
+    // QR GENERATE
+    // ======================
+    let div = document.createElement("div");
+    document.body.appendChild(div);
+    div.style.position = "absolute";
+    div.style.left = "-9999px";
+
+new QRCode(div,{
+  text:`ID: ${i.id}\nNAME: ${i.name}`,
+  width:70,
+  height:70
+});
+
+    await new Promise(r => setTimeout(r, 300));
+
+    let canvas = div.querySelector("canvas");
+
+    if(canvas){
+
+      let img = canvas.toDataURL("image/png");
+
+      let id = wb.addImage({
+        base64: img,
+        extension: "png"
+      });
+
+      // ======================
+      // CENTER QR IMAGE
+      // ======================
+      ws.addImage(id, {
+        tl: { col: 2, row: row.number - 1, colOff: 15, rowOff: 10 },
+        ext: { width: 55, height: 55 }
+      });
+    }
+
+    document.body.removeChild(div);
+  }
+
+  // ======================
+  // SUMMARY FOOTER
+  // ======================
+  const summary = ws.addRow([]);
+  const total = ws.addRow([
+    "",
+    "សរុបភ្ញៀវ",
+    items.length
+  ]);
+
+  total.font = {
+    bold: true,
+    size: 12,
+    name: "Khmer OS Battambang"
+  };
+
+  total.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "" }
+  };
+
+  total.alignment = {
+    horizontal: "center",
+    vertical: "middle"
+  };
+
+  total.eachCell(cell => {
+    cell.border = {
+      top: { style: "thin" },
+      left: { style: "thin" },
+      bottom: { style: "thin" },
+      right: { style: "thin" }
+    };
+  });
+
+  // ======================
+  // EXPORT FILE
+  // ======================
+  const buf = await wb.xlsx.writeBuffer();
+
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([buf]));
+  a.download = "បញ្ជីឈ្មោះភ្ញៀវ.xlsx";
+  a.click();
+}
+db.collection("qr_payments")
+.onSnapshot(snap=>{
+
+  let count = 0;
+  let totalUSD = 0;
+  let totalKHR = 0;
+
+  snap.forEach(doc=>{
+    const d = doc.data();
+
+    count++;
+    totalUSD += Number(d.usd || 0);
+    totalKHR += Number(d.khr || 0);
+  });
+
+  document.getElementById("totalList").innerText = count;
+  document.getElementById("totalUSD").innerText = totalUSD.toLocaleString();
+  document.getElementById("totalKHR").innerText = totalKHR.toLocaleString();
+
+// CALL CHART
+renderCharts(
+  dataList.length,
+  count,
+  totalUSD,
+  totalKHR
+);
+});
+let barChart, pieChart;
+const RATE = 4000;
+
+function renderCharts(totalQR, totalList, totalUSD, totalKHR){
+
+  if(barChart) barChart.destroy();
+  if(pieChart) pieChart.destroy();
+
+  // ======================
+  // CALCULATION
+  // ======================
+  let unpaid = Math.max(0, Number(totalQR) - Number(totalList));
+
+  let usdValueKHR = Number(totalUSD) * RATE;
+  let totalValueKHR = usdValueKHR + Number(totalKHR);
+
+  // ======================
+  // BAR CHART (ABA STYLE MIX)
+  // ======================
+  barChart = new Chart(document.getElementById("barChart"), {
+  type: "bar",
+  data: {
+    labels: [
+      "ភ្ញៀវសរុប",
+      "ភ្ញៀវចងដៃ",
+      "មិនទាន់ចងដៃ"
+    ],
+    datasets: [{
+      label: "ចំនួន",
+      data: [
+        totalQR,
+        totalList,
+        unpaid
+      ],
+      backgroundColor: [
+        "#2196F3",
+        "#4CAF50",
+        "#F44336"
+      ],
+      borderRadius: 10
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => ctx.raw.toLocaleString()
+        }
+      }
+    },
+    scales: {
+      y: {
+        ticks: {
+          callback: v => v.toLocaleString()
+        }
+      }
+    }
+  }
+});
+
+  // ======================
+  // PIE CHART (VALUE SHARE)
+  // ======================
+
+let usdToKhr = Number(totalUSD) * RATE;
+
+pieChart = new Chart(document.getElementById("pieChart"), {
+  type: "pie",
+  data: {
+    labels: [
+      "ដុល្លារ ($)",
+      "រៀល (៛)"
+    ],
+    datasets: [{
+      data: [
+        usdToKhr,        // hidden conversion
+        Number(totalKHR)
+      ],
+      backgroundColor: [
+        "#4CAF50",
+        "#FF9800"
+      ],
+      borderWidth: 2
+    }]
+  },
+
+  options: {
+    responsive: true,
+
+    plugins: {
+      legend: {
+        position: "bottom"
+      },
+
+      tooltip: {
+        callbacks: {
+
+          label: function(context) {
+
+            if (context.dataIndex === 0) {
+              // USD slice
+              return `💵 ${totalUSD} $`;
+            }
+
+            // KHR slice
+            return `💴 ${Number(totalKHR).toLocaleString()} ៛`;
+          }
+        }
+      }
+    }
+  }
+});
+}
+function openUnpaidPage(){
+  goPage('pending');   // 👉 switch page
+  showUnpaidGuests();  // 👉 load data
+}
+
+async function showUnpaidGuests(){
+
+  try{
+
+    const qrSnap = await db.collection("qrData").get();
+    const paySnap = await db.collection("qr_payments").get();
+
+    let allGuests = [];
+    let paidIds = [];
+
+    // 🔥 ALL GUESTS (use business ID like ID0001)
+    qrSnap.forEach(doc=>{
+      const d = doc.data();
+
+      allGuests.push({
+        docId: doc.id,
+        id: d.id,        // 👈 IMPORTANT
+        name: d.name
+      });
+    });
+
+    // 🔥 PAID LIST (store guestId = ID0001)
+    paySnap.forEach(doc=>{
+      const d = doc.data();
+      if(d.guestId){
+        paidIds.push(d.guestId); // 👈 must be ID0001
+      }
+    });
+
+    // 🔥 FILTER UNPAID BY "id"
+    let unpaid = allGuests.filter(g =>
+      !paidIds.includes(g.id)
+    );
+    unpaidData = unpaid;
+    let html = "";
+    let no = 1;
+
+    unpaid.forEach(i=>{
+      html += `
+      <tr>
+        <td>${no++}</td>
+        <td>${i.id}</td>
+        <td>${i.name}</td>
+        <td style="color:red;font-weight:bold;">
+          ❌ មិនទាន់ចងដៃ
+        </td>
+      </tr>`;
+    });
+
+    document.getElementById("pendingTableBody").innerHTML = html;
+
+    // 🔥 AUTO UPDATE BADGE COUNT
+    document.getElementById("pendingBadge").innerText = unpaid.length;
+
+  }catch(err){
+    console.error(err);
+    showToast("❌ Error","error");
+  }
+}
+function searchData(){
+
+  search = document
+    .getElementById("search")
+    .value
+    .toLowerCase();
+
+  render();
+}
+function searchPending(){
+
+  let keyword = document
+    .getElementById("pendingSearch")
+    .value
+    .toLowerCase();
+
+  let html = "";
+  let no = 1;
+
+  unpaidData.forEach(i=>{
+
+    if(
+      (i.name || "").toLowerCase().includes(keyword) ||
+      (i.id || "").toLowerCase().includes(keyword)
+    ){
+
+      html += `
+      <tr>
+        <td>${no++}</td>
+        <td>${i.id}</td>
+        <td>${i.name}</td>
+        <td style="color:red;font-weight:bold;">
+          ❌ មិនទាន់ចងដៃ
+        </td>
+      </tr>
+      `;
+    }
+
+  });
+
+  document.getElementById("pendingTableBody").innerHTML = html;
+}
+db.collection("qrData").onSnapshot(()=>{
+  livePendingBadge();
+});
+
+db.collection("qr_payments").onSnapshot(()=>{
+  livePendingBadge();
+});
+let dashboardUnpaid = 0;
+
+function updateDashboard(){
+
+  document.getElementById("totalQR").innerText =
+    dataList.length;
+
+  document.getElementById("totalUnpaid").innerText =
+    dashboardUnpaid;
+
+}
+function livePendingBadge(){
+
+  db.collection("qrData").get().then(qrSnap=>{
+  db.collection("qr_payments").get().then(paySnap=>{
+
+    let allGuests = [];
+    let paidIds = [];
+
+    qrSnap.forEach(doc=>{
+      let d = doc.data();
+      allGuests.push({ id: d.id, name: d.name });
+    });
+
+    paySnap.forEach(doc=>{
+      let d = doc.data();
+      if(d.guestId) paidIds.push(d.guestId);
+    });
+
+    let unpaid = allGuests.filter(g =>
+      !paidIds.includes(g.id)
+    );
+
+    // 🔴 SAVE GLOBAL
+    dashboardUnpaid = unpaid.length;
+    unpaidData = unpaid;
+
+    // BADGE
+    document.getElementById("pendingBadge").innerText =
+      unpaid.length;
+
+    // DASHBOARD
+    updateDashboard();
+
+  });
+  });
+
+}
+</script>
+
+</body>
+</html>
