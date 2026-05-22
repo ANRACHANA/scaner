@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
 <style>
 body{
   margin:0;
@@ -855,8 +856,11 @@ style="
 
 <div id="toast"></div>
 <div id="loadingOverlay">⏳ កំពុងរក្សាទុក...</div>
-
 <script>
+const Html5QrcodeSupportedFormats = window.Html5QrcodeSupportedFormats;
+</script>
+<script>
+
 firebase.initializeApp({
   apiKey: "AIzaSyBuKVB0z6NVtepmjE33qXxrxs8RcmCOwd0",
   authDomain:"create-db14a.firebaseapp.com",
@@ -1043,7 +1047,7 @@ async function startScan(){
 
     showScanLine();
 
-    // 🔥 ដាក់ទីនេះ (UNLOCK SOUND)
+    // unlock sound
     scanSound.play().then(()=>{
       scanSound.pause();
       scanSound.currentTime = 0;
@@ -1051,30 +1055,51 @@ async function startScan(){
 
     await qr.start(
       cameraId,
-      { fps: 10, qrbox: 250 },
-      async (decodedText)=>{
+      {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
 
-        // 🔊 sound ពេល scan ជោគជ័យ
-        scanSound.currentTime = 0;
-        scanSound.play().catch(()=>{});
+        // 🔥 FULL QR + BARCODE SUPPORT FIX
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.QR_CODE,
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E
+        ],
 
-        navigator.vibrate?.(150);
+        // 🔥 stability boost
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true
+        }
+      },
 
-        document.getElementById("result").innerText = decodedText;
+      async (decodedText, decodedResult)=>{
 
         if(scanned) return;
         scanned = true;
 
+        // sound + vibration
+        scanSound.currentTime = 0;
+        scanSound.play().catch(()=>{});
+        navigator.vibrate?.(150);
+
+        document.getElementById("result").innerText = decodedText;
+
         await safeStop();
         hideScanLine();
-        openModal(decodedText);
 
+        openModal(decodedText);
       },
-      (err)=>{}
+
+      (error)=>{}
     );
 
   }catch(e){
     hideScanLine();
+    cameraRunning = false;
     alert("Camera Error: " + e.message);
   }
 }
@@ -1082,6 +1107,7 @@ async function safeStop(){
   try{
     if(cameraRunning){
       await qr.stop();
+      await qr.clear();
     }
   }catch(e){
     console.log("stop error:", e);
